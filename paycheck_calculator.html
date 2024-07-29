@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paycheck Calculator</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #ecf0f1;
+            --accent-color: #2ecc71;
+            --text-color: #34495e;
+            --border-color: #bdc3c7;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--secondary-color);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1, h2, h3, h4 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 40px;
+        }
+        
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+        
+        button {
+            background-color: var(--accent-color);
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            grid-column: 1 / -1;
+            justify-self: center;
+            margin-top: 20px;
+        }
+        
+        button:hover {
+            background-color: #27ae60;
+        }
+        
+        #result {
+            margin-top: 40px;
+        }
+        
+        .summary {
+            background-color: var(--secondary-color);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        
+        .summary p {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: var(--primary-color);
+            color: #fff;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 20px;
+            }
+            
+            form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Paycheck Calculator</h1>
+        <form id="paycheck-form">
+            <div>
+                <label for="regular">Regular Hours:</label>
+                <input type="number" id="regular" step="0.01" required>
+            </div>
+            
+            <div>
+                <label for="overtime">Overtime Hours:</label>
+                <input type="number" id="overtime" step="0.01">
+            </div>
+            
+            <div>
+                <label for="personal-time">Personal Time Hours:</label>
+                <input type="number" id="personal-time" step="0.01">
+            </div>
+            
+            <div>
+                <label for="holiday">Holiday Hours:</label>
+                <input type="number" id="holiday" step="0.01">
+            </div>
+            
+            <div>
+                <label for="vacation">Vacation Hours:</label>
+                <input type="number" id="vacation" step="0.01">
+            </div>
+            
+            <button type="submit">Calculate</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('paycheck-form');
+        const result = document.getElementById('result');
+
+        const rates = {
+            regular: 21.10,
+            overtime: 31.65,
+            personalTime: 21.10,
+            holiday: 21.10,
+            vacation: 21.10,
+            shiftPay: 0.75,
+            shiftPayOvertime: 1.124
+        };
+
+        const taxRates = {
+            federalIncomeTax: 0.0833,
+            socialSecurityTax: 0.062,
+            medicareTax: 0.0145,
+            paStateIncomeTax: 0.0307,
+            philadelphiaIncomeTax: 0.034408,
+            paSUITax: 0.000693
+        };
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const regular = parseFloat(document.getElementById('regular').value) || 0;
+            const overtime = parseFloat(document.getElementById('overtime').value) || 0;
+            const personalTime = parseFloat(document.getElementById('personal-time').value) || 0;
+            const holiday = parseFloat(document.getElementById('holiday').value) || 0;
+            const vacation = parseFloat(document.getElementById('vacation').value) || 0;
+
+            const payDetails = calculatePay(regular, overtime, personalTime, holiday, vacation);
+
+            displayResults(payDetails);
+        });
+
+        function calculatePay(regular, overtime, personalTime, holiday, vacation) {
+            const regularPay = regular * rates.regular;
+            const overtimePay = overtime * rates.overtime;
+            const personalTimePay = personalTime * rates.personalTime;
+            const holidayPay = holiday * rates.holiday;
+            const vacationPay = vacation * rates.vacation;
+
+            const totalHours = regular + overtime + personalTime + holiday + vacation;
+            const shiftPay = totalHours * rates.shiftPay;
+            const shiftPayOvertime = overtime * rates.shiftPayOvertime;
+
+            const grossPay = regularPay + overtimePay + personalTimePay + holidayPay + vacationPay + shiftPay + shiftPayOvertime;
+
+            const taxes = calculateTaxes(grossPay);
+            const totalTaxes = Object.values(taxes).reduce((sum, tax) => sum + tax, 0);
+            const takeHomePay = grossPay - totalTaxes;
+
+            return {
+                grossPay,
+                takeHomePay,
+                totalTaxes,
+                taxes,
+                units: {
+                    regular,
+                    overtime,
+                    personalTime,
+                    holiday,
+                    vacation,
+                    totalHours
+                },
+                categories: {
+                    regularPay,
+                    overtimePay,
+                    personalTimePay,
+                    holidayPay,
+                    vacationPay,
+                    shiftPay,
+                    shiftPayOvertime
+                }
+            };
+        }
+
+        function calculateTaxes(grossPay) {
+            return {
+                federalIncomeTax: grossPay * taxRates.federalIncomeTax,
+                socialSecurityTax: grossPay * taxRates.socialSecurityTax,
+                medicareTax: grossPay * taxRates.medicareTax,
+                paStateIncomeTax: grossPay * taxRates.paStateIncomeTax,
+                philadelphiaIncomeTax: grossPay * taxRates.philadelphiaIncomeTax,
+                paSUITax: grossPay * taxRates.paSUITax
+            };
+        }
+
+        function displayResults(payDetails) {
+            result.innerHTML = `
+                <h2>Paycheck Summary</h2>
+                <div class="summary">
+                    <p><strong>Gross Income:</strong> $${payDetails.grossPay.toFixed(2)}</p>
+                    <p><strong>Total Taxes Deducted:</strong> $${payDetails.totalTaxes.toFixed(2)}</p>
+                    <p><strong>Take Home Pay:</strong> $${payDetails.takeHomePay.toFixed(2)}</p>
+                </div>
+
+                <h3>Detailed Breakdown</h3>
+                <h4>Hours Worked</h4>
+                <table>
+                    <tr><th>Category</th><th>Hours</th></tr>
+                    ${Object.entries(payDetails.units).map(([category, hours]) => 
+                        `<tr><td>${category.charAt(0).toUpperCase() + category.slice(1)}</td><td>${hours.toFixed(2)}</td></tr>`
+                    ).join('')}
+                </table>
+
+                <h4>Pay Categories</h4>
+                <table>
+                    <tr><th>Category</th><th>Amount</th></tr>
+                    ${Object.entries(payDetails.categories).map(([category, amount]) => 
+                        `<tr><td>${category.charAt(0).toUpperCase() + category.slice(1)}</td><td>$${amount.toFixed(2)}</td></tr>`
+                    ).join('')}
+                </table>
+
+                <h4>Taxes</h4>
+                <table>
+                    <tr><th>Tax</th><th>Amount</th></tr>
+                    ${Object.entries(payDetails.taxes).map(([tax, amount]) => 
+                        `<tr><td>${tax.charAt(0).toUpperCase() + tax.slice(1)}</td><td>$${amount.toFixed(2)}</td></tr>`
+                    ).join('')}
+                </table>
+            `;
+        }
+    </script>
+</body>
+</html>
